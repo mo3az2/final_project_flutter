@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'package:final_project/logic/project_state.dart';
+import 'package:final_project/models/book_details_model.dart';
 import 'package:final_project/models/home_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+
 
 class NavigationCubit extends Cubit<int> {
   NavigationCubit() : super(0);
@@ -12,35 +15,43 @@ class NavigationCubit extends Cubit<int> {
     emit(index);
   }
 }
+class HomeCubit extends Cubit<ProjectState> {
+  HomeCubit() : super(ProjectInitial());
 
-class ProjectCubit extends Cubit<ProjectState> {
-  ProjectCubit() : super(ProjectInitial());
+  static HomeCubit get(context) => BlocProvider.of(context);
 
-  static ProjectCubit get(context) => BlocProvider.of(context);
+  List<HomeModel> allData = [];
+  List<HomeModel> programmingData = [];
+  List<HomeModel> businessData = [];
+  List<HomeModel> scienceData = [];
+  List<HomeModel> freeData = [];
 
-  List<HomeModel> AllData = [];
+  void fetchAllData() {
+    getAll();
+    getProgramming();
+    getBusiness();
+    getScience();
+    getFree();
+  }
+
   void getAll() async {
-    await fetchData("https://www.googleapis.com/books/v1/volumes?q=everything", AllData);
+    await fetchData("https://www.googleapis.com/books/v1/volumes?q=everything", allData);
   }
 
-  List<HomeModel> ProgrammingData = [];
   void getProgramming() async {
-    await fetchData("https://www.googleapis.com/books/v1/volumes?q=programming", ProgrammingData);
+    await fetchData("https://www.googleapis.com/books/v1/volumes?q=programming", programmingData);
   }
 
-  List<HomeModel> BusinessData = [];
   void getBusiness() async {
-    await fetchData("https://www.googleapis.com/books/v1/volumes?q=business", BusinessData);
+    await fetchData("https://www.googleapis.com/books/v1/volumes?q=business", businessData);
   }
 
-  List<HomeModel> ScienceData = [];
   void getScience() async {
-    await fetchData("https://www.googleapis.com/books/v1/volumes?q=science", ScienceData);
+    await fetchData("https://www.googleapis.com/books/v1/volumes?q=science", scienceData);
   }
 
-  List<HomeModel> FreeData = [];
   void getFree() async {
-    await fetchData("https://www.googleapis.com/books/v1/volumes?q=free", FreeData);
+    await fetchData("https://www.googleapis.com/books/v1/volumes?q=free", freeData);
   }
 
   Future<void> fetchData(String url, List<HomeModel> dataList) async {
@@ -51,7 +62,7 @@ class ProjectCubit extends Cubit<ProjectState> {
         var convertedResponse = jsonDecode(response.body);
         List listFromApi = convertedResponse["items"];
         for (var element in listFromApi) {
-          dataList.add(HomeModel.fromjson(element["volumeInfo"]));
+          dataList.add(HomeModel.fromJson(element["selfLink"],element["volumeInfo"]));
         }
         emit(Success());
       } else {
@@ -65,163 +76,71 @@ class ProjectCubit extends Cubit<ProjectState> {
   }
 }
 
-/*import 'dart:convert';
-import 'package:final_project/logic/project_state.dart';
-import 'package:final_project/models/home_model.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
 
-class NavigationCubit extends Cubit<int> {
-  NavigationCubit() : super(0);
+class BookDetailsCubit extends Cubit<ProjectState>{
 
-  void setTab(int index) {
-    emit(index);
+  BookDetailsCubit() : super(ProjectInitial());
+
+   static BookDetailsCubit get (context)=> BlocProvider.of(context);
+
+  List<BookDetailsModel> bookDetails =[];
+
+
+   Future<void> getBookDetails(String url) async {
+     emit(Loading());
+     try {
+       var uri =Uri.parse(url);
+       var response = await http.get(uri);
+       if (response.statusCode == 200) {
+         var convertedResponse = jsonDecode(response.body);
+         // Ensure that `volumeInfo` is a Map and not an Iterable
+         var volumeInfo = convertedResponse["volumeInfo"];
+
+         if (volumeInfo != null && volumeInfo is Map<String, dynamic>) {
+           bookDetails.add(BookDetailsModel.fromJson(volumeInfo));
+           emit(Success());
+         } else {
+           emit(Error());
+           debugPrint("VolumeInfo is not in the expected format.");
+         }
+       } else {
+         debugPrint("status : ${response.statusCode}");
+         emit(Error());
+       }
+
+     } catch (e) {
+       debugPrint("$e");
+       emit(Error());
+     }
+
+
+   }
+
+  /*static Future<void> urlLaunch(String readUrl)async{
+    final Uri url =Uri.parse(readUrl);
+    if(!await launchUrl(url)){
+      throw Exception("Could not launch");
+    }else{
+      await launchUrl(url);
+    }
+  }*/
+ static Future<void> launchURL(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      /*if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        debugPrint("Could not launch $url");
+        // Provide user feedback
+      }*/
+      await launch(url);
+    } catch (e) {
+      debugPrint("Error launching URL: $e");
+      // Provide user feedback
+    }
   }
 
 }
 
 
-class ProjectCubit extends Cubit<ProjectState>{
-  ProjectCubit() : super(ProjectInitial());
 
-  static ProjectCubit get(context)=> BlocProvider.of(context);
-
-
-  List <HomeModel> AllData = [];
-  void getAll() async {
-
-    try{
-      emit(Loading());
-      var url = Uri.parse("https://www.googleapis.com/books/v1/volumes?q=everything");
-      var response = await http.get(url);
-      if (response.statusCode==200){
-        //print("=============================================${response.body}");
-        var convertedResponse = jsonDecode(response.body);
-        // print("==============================================${convertedResponse}");
-        List listFromApi =convertedResponse["items"];
-        for (var element in listFromApi) {
-         AllData.add(HomeModel.fromjson(element["volumeInfo"]));
-        }
-        emit(Success());
-      }else {
-        debugPrint("status : ${response.statusCode}");
-      }
-    }catch(e){
-      debugPrint("$e");
-      emit(Error());
-    }
-
-
-  }
-
-  List <HomeModel> ProgrammingData = [];
-  void getProgramming() async {
-
-    try{
-      emit(Loading());
-      var url = Uri.parse("https://www.googleapis.com/books/v1/volumes?q=programming");
-      var response = await http.get(url);
-      if (response.statusCode==200){
-        //print("=============================================${response.body}");
-        var convertedResponse = jsonDecode(response.body);
-        // print("==============================================${convertedResponse}");
-        List listFromApi =convertedResponse["items"];
-        for (var element in listFromApi) {
-          ProgrammingData.add(HomeModel.fromjson(element["volumeInfo"]));
-        }
-        emit(Success());
-      }else {
-        debugPrint("status : ${response.statusCode}");
-      }
-    }catch(e){
-      debugPrint("$e");
-      emit(Error());
-    }
-
-
-  }
-
-  List <HomeModel> BusinessData = [];
-  void getBusiness() async {
-
-    try{
-      emit(Loading());
-      var url = Uri.parse("https://www.googleapis.com/books/v1/volumes?q=business");
-      var response = await http.get(url);
-      if (response.statusCode==200){
-        //print("=============================================${response.body}");
-        var convertedResponse = jsonDecode(response.body);
-        // print("==============================================${convertedResponse}");
-        List listFromApi =convertedResponse["items"];
-        for (var element in listFromApi) {
-          BusinessData.add(HomeModel.fromjson(element["volumeInfo"]));
-        }
-        emit(Success());
-      }else {
-        debugPrint("status : ${response.statusCode}");
-      }
-    }catch(e){
-      debugPrint("$e");
-      emit(Error());
-    }
-
-
-  }
-
-  List <HomeModel> ScienceData = [];
-  void getScience() async {
-
-    try{
-      emit(Loading());
-      var url = Uri.parse("https://www.googleapis.com/books/v1/volumes?q=science");
-      var response = await http.get(url);
-      if (response.statusCode==200){
-        //print("=============================================${response.body}");
-        var convertedResponse = jsonDecode(response.body);
-        // print("==============================================${convertedResponse}");
-        List listFromApi =convertedResponse["items"];
-        for (var element in listFromApi) {
-          ScienceData.add(HomeModel.fromjson(element["volumeInfo"]));
-        }
-        emit(Success());
-      }else {
-        debugPrint("status : ${response.statusCode}");
-      }
-    }catch(e){
-      debugPrint("$e");
-      emit(Error());
-    }
-
-
-  }
-
-  List <HomeModel> FreeData = [];
-  void getFree() async {
-
-    try{
-      emit(Loading());
-      var url = Uri.parse("https://www.googleapis.com/books/v1/volumes?q=free");
-      var response = await http.get(url);
-      if (response.statusCode==200){
-        //print("=============================================${response.body}");
-        var convertedResponse = jsonDecode(response.body);
-        // print("==============================================${convertedResponse}");
-        List listFromApi =convertedResponse["items"];
-        for (var element in listFromApi) {
-          FreeData.add(HomeModel.fromjson(element["volumeInfo"]));
-        }
-        emit(Success());
-      }else {
-        debugPrint("status : ${response.statusCode}");
-      }
-    }catch(e){
-      debugPrint("$e");
-      emit(Error());
-    }
-
-
-  }
-
-
-}*/

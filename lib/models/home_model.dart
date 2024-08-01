@@ -1,18 +1,15 @@
-class HomeModel{
+class HomeModel {
   String? image;
   String? name;
   String? publisher;
+  String? bookDetailsUrl;
 
-  HomeModel.fromjson(Map<String,dynamic>json){
-    this.image = json['imageLinks']?['smallThumbnail'];
-    name= json["title"];
-    publisher=json["publisher"];
-
-
-
+  HomeModel.fromJson(bookDetailsUrl,Map<String, dynamic> json) {
+    image = json['imageLinks']?['smallThumbnail'];
+    name = json["title"];
+    publisher = json["publisher"];
+    this.bookDetailsUrl = bookDetailsUrl;
   }
-
-
-
 }
+
 
